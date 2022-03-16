@@ -46,6 +46,13 @@ var CRYPTO_TYPE;
     CRYPTO_TYPE[CRYPTO_TYPE["RSA"] = 0] = "RSA";
     CRYPTO_TYPE[CRYPTO_TYPE["AES"] = 1] = "AES";
 })(CRYPTO_TYPE || (CRYPTO_TYPE = {}));
+var FORMAT_TYPE;
+(function (FORMAT_TYPE) {
+    FORMAT_TYPE["RAW"] = "raw";
+    FORMAT_TYPE["PKCS8"] = "pkcs8";
+    FORMAT_TYPE["SPKI"] = "spki";
+    FORMAT_TYPE["JWK"] = "jwk";
+})(FORMAT_TYPE || (FORMAT_TYPE = {}));
 /**
  * 加密工具抽象类
  */
@@ -144,7 +151,7 @@ class RSACryptoHelper extends CryptoHelper {
         const resStr = str.replace(reg, '');
         const binaryStr = atob(resStr); // 将 base-64 编码转化成 str
         const buffer = this.str2buffer(binaryStr, BUFFER_TYPE.UINT8);
-        return this.tool.importKey('spki', // 描述要导入的密钥的数据格式，"jwk" (public or private), "raw" (public only), "spki" (public only), or "pkcs8" (private only)
+        return this.tool.importKey(FORMAT_TYPE.SPKI, // 描述要导入的密钥的数据格式，"jwk" (public or private), "raw" (public only), "spki" (public only), or "pkcs8" (private only)
         buffer, {
             name: CRYPTO_ALGORITHM.RSA,
             hash: 'SHA-256',
@@ -165,7 +172,7 @@ class RSACryptoHelper extends CryptoHelper {
         const regStr = str.replace(reg, '');
         const binaryStr = atob(regStr); // 将 base-64 编码转化成 str
         const buffer = this.str2buffer(binaryStr, BUFFER_TYPE.UINT8);
-        return this.tool.importKey('pkcs8', // 描述要导入的密钥的数据格式，"jwk" (public or private), "raw" (public only), "spki" (public only), or "pkcs8" (private only)
+        return this.tool.importKey(FORMAT_TYPE.PKCS8, // 描述要导入的密钥的数据格式，"jwk" (public or private), "raw" (public only), "spki" (public only), or "pkcs8" (private only)
         buffer, {
             name: CRYPTO_ALGORITHM.RSA,
             hash: 'SHA-256',
@@ -275,10 +282,7 @@ class AESGCMCryptoHelper extends CryptoHelper {
      */
     setKey(key) {
         const buffer = typeof key === 'string' ? this.str2buffer(key, BUFFER_TYPE.UINT8) : key;
-        return this.tool.importKey('raw', buffer, CRYPTO_ALGORITHM.AES_GCM, true, [
-            'encrypt',
-            'decrypt',
-        ]); // 使用 AES 算法时导入密钥使用 'raw' 数据格式
+        return this.tool.importKey(FORMAT_TYPE.RAW, buffer, CRYPTO_ALGORITHM.AES_GCM, true, ['encrypt', 'decrypt']); // 使用 AES 算法时导入密钥使用 'raw' 数据格式
     }
     /**
      * 导入向量
@@ -311,17 +315,19 @@ class AESGCMCryptoHelper extends CryptoHelper {
      * @param cb 加密处理时 需要操作的回调函数
      */
     encrypt(content, cb) {
-        try {
-            if (!this.switchTool) {
-                throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!this.switchTool) {
+                    throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
+                }
+                const buffer = content instanceof ArrayBuffer ? content : this.str2buffer(content);
+                cb && cb(true);
+                return this.tool.encrypt({ name: CRYPTO_ALGORITHM.AES_GCM, iv: this._iv }, this._key, buffer);
             }
-            const buffer = content instanceof ArrayBuffer ? content : this.str2buffer(content);
-            cb && cb(true);
-            return this.tool.encrypt({ name: CRYPTO_ALGORITHM.AES_GCM, iv: this._iv }, this._key, buffer);
-        }
-        catch (error) {
-            console.error('encrypt error', error);
-        }
+            catch (error) {
+                console.error('encrypt error', error);
+            }
+        });
     }
     /**
      * AES-GCM 解密
@@ -329,17 +335,20 @@ class AESGCMCryptoHelper extends CryptoHelper {
      * @param cb 解密处理时 需要操作的回调函数
      */
     decrypt(content, cb) {
-        try {
-            if (!this.switchTool) {
-                throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!this.switchTool) {
+                    throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
+                }
+                const buffer = content instanceof ArrayBuffer ? content : this.str2buffer(content);
+                cb && cb(true);
+                const decrypted = yield this.tool.decrypt({ name: CRYPTO_ALGORITHM.AES_GCM, iv: this._iv }, this._key, buffer);
+                return this.buffer2str(decrypted);
             }
-            const buffer = content instanceof ArrayBuffer ? content : this.str2buffer(content);
-            cb && cb(true);
-            return this.tool.decrypt({ name: CRYPTO_ALGORITHM.AES_GCM, iv: this._iv }, this._key, buffer);
-        }
-        catch (error) {
-            console.error('decrypt error', error);
-        }
+            catch (error) {
+                console.error('decrypt error', error);
+            }
+        });
     }
     get keyBuffer() {
         return this._keyBuffer;
@@ -379,10 +388,10 @@ function getRsaKeys() {
         )
             .then(function (key) {
             window.crypto.subtle
-                .exportKey('pkcs8', key.privateKey) // pkcs8 格式私钥 ,PKCS8（ASN.1的PrivateKeyInfo，私钥
+                .exportKey(FORMAT_TYPE.PKCS8, key.privateKey) // pkcs8 格式私钥 ,PKCS8（ASN.1的PrivateKeyInfo，私钥
                 .then(function (keydata1) {
                 window.crypto.subtle
-                    .exportKey('spki', key.publicKey) // spki 格式公钥，使用 spki ，它代表“受管主题”，标准ASN.1序列化公钥的结构
+                    .exportKey(FORMAT_TYPE.SPKI, key.publicKey) // spki 格式公钥，使用 spki ，它代表“受管主题”，标准ASN.1序列化公钥的结构
                     .then(function (keydata2) {
                     var privateKey = RSA2text(keydata1, 1);
                     var publicKey = RSA2text(keydata2);
@@ -479,10 +488,10 @@ testRSA();
 function testAES() {
     return __awaiter(this, void 0, void 0, function* () {
         const aes = new AESGCMCryptoHelper();
-        yield aes.init({
-            key: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-            iv: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-        }); // AES key data must be 128 or 256 bits
+        const key = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ||
+            crypto.getRandomValues(new Uint8Array(16)).buffer; // 可以用户自定义(AES key data must be 128 or 256 bits)，可以随机生成
+        const iv = 'bbbb' || crypto.getRandomValues(new Uint8Array(16)).buffer; // // 可以用户自定义，可以随机生成
+        yield aes.init({ key, iv }); // AES key data must be 128 or 256 bits
         const data = yield aes.encrypt('hello world');
         const str = yield aes.decrypt(data);
         console.log('test aes...', str);

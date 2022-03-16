@@ -45,6 +45,13 @@ enum CRYPTO_TYPE {
   AES,
 }
 
+enum FORMAT_TYPE {
+  RAW = 'raw', // (public only) , 适用于 AES 算法
+  PKCS8 = 'pkcs8', // (private only) , 私钥 ,PKCS8 标准ASN.1序列化私钥的结构，适用于 RSA 算法
+  SPKI = 'spki', // (public only) , 公钥，使用 spki ，它代表“受管主题”，标准ASN.1序列化公钥的结构, 适用于 RSA 算法
+  JWK = 'jwk', //  (public or private) 适用于 RSA/AES 算法
+}
+
 /**
  * 加密工具抽象类
  */
@@ -177,7 +184,7 @@ class RSACryptoHelper extends CryptoHelper {
     const binaryStr = atob(resStr); // 将 base-64 编码转化成 str
     const buffer = this.str2buffer(binaryStr, BUFFER_TYPE.UINT8);
     return this.tool.importKey(
-      'spki', // 描述要导入的密钥的数据格式，"jwk" (public or private), "raw" (public only), "spki" (public only), or "pkcs8" (private only)
+      FORMAT_TYPE.SPKI, // 描述要导入的密钥的数据格式，"jwk" (public or private), "raw" (public only), "spki" (public only), or "pkcs8" (private only)
       buffer,
       {
         name: CRYPTO_ALGORITHM.RSA,
@@ -204,7 +211,7 @@ class RSACryptoHelper extends CryptoHelper {
     const binaryStr = atob(regStr); // 将 base-64 编码转化成 str
     const buffer = this.str2buffer(binaryStr, BUFFER_TYPE.UINT8);
     return this.tool.importKey(
-      'pkcs8', // 描述要导入的密钥的数据格式，"jwk" (public or private), "raw" (public only), "spki" (public only), or "pkcs8" (private only)
+      FORMAT_TYPE.PKCS8, // 描述要导入的密钥的数据格式，"jwk" (public or private), "raw" (public only), "spki" (public only), or "pkcs8" (private only)
       buffer,
       {
         name: CRYPTO_ALGORITHM.RSA,
@@ -353,10 +360,13 @@ class AESGCMCryptoHelper extends CryptoHelper {
   ): Promise<CryptoKey> | PromiseLike<CryptoKey> {
     const buffer =
       typeof key === 'string' ? this.str2buffer(key, BUFFER_TYPE.UINT8) : key;
-    return this.tool.importKey('raw', buffer, CRYPTO_ALGORITHM.AES_GCM, true, [
-      'encrypt',
-      'decrypt',
-    ]); // 使用 AES 算法时导入密钥使用 'raw' 数据格式
+    return this.tool.importKey(
+      FORMAT_TYPE.RAW,
+      buffer,
+      CRYPTO_ALGORITHM.AES_GCM,
+      true,
+      ['encrypt', 'decrypt']
+    ); // 使用 AES 算法时导入密钥使用 'raw' 数据格式
   }
   /**
    * 导入向量
@@ -385,10 +395,10 @@ class AESGCMCryptoHelper extends CryptoHelper {
    * @param content 需要加密的数据
    * @param cb 加密处理时 需要操作的回调函数
    */
-  public encrypt(
+  public async encrypt(
     content: string | ArrayBuffer,
     cb?: (args: any) => void
-  ): Promise<ArrayBuffer> | PromiseLike<ArrayBuffer> {
+  ): Promise<ArrayBuffer> {
     try {
       if (!this.switchTool) {
         throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
@@ -411,10 +421,10 @@ class AESGCMCryptoHelper extends CryptoHelper {
    * @param content 需要解密的数据
    * @param cb 解密处理时 需要操作的回调函数
    */
-  public decrypt(
+  public async decrypt(
     content: string | ArrayBuffer,
     cb?: (args: any) => void
-  ): Promise<string> | PromiseLike<string> {
+  ): Promise<string> {
     try {
       if (!this.switchTool) {
         throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
@@ -422,11 +432,12 @@ class AESGCMCryptoHelper extends CryptoHelper {
       const buffer =
         content instanceof ArrayBuffer ? content : this.str2buffer(content);
       cb && cb(true);
-      return this.tool.decrypt(
+      const decrypted = await this.tool.decrypt(
         { name: CRYPTO_ALGORITHM.AES_GCM, iv: this._iv },
         this._key,
         buffer
       );
+      return this.buffer2str(decrypted);
     } catch (error) {
       console.error('decrypt error', error);
     }
@@ -473,10 +484,10 @@ function getRsaKeys(): Promise<any> {
       )
       .then(function (key) {
         window.crypto.subtle
-          .exportKey('pkcs8', key.privateKey) // pkcs8 格式私钥 ,PKCS8（ASN.1的PrivateKeyInfo，私钥
+          .exportKey(FORMAT_TYPE.PKCS8, key.privateKey) // pkcs8 格式私钥 ,PKCS8（ASN.1的PrivateKeyInfo，私钥
           .then(function (keydata1) {
             window.crypto.subtle
-              .exportKey('spki', key.publicKey) // spki 格式公钥，使用 spki ，它代表“受管主题”，标准ASN.1序列化公钥的结构
+              .exportKey(FORMAT_TYPE.SPKI, key.publicKey) // spki 格式公钥，使用 spki ，它代表“受管主题”，标准ASN.1序列化公钥的结构
               .then(function (keydata2) {
                 var privateKey = RSA2text(keydata1, 1);
                 var publicKey = RSA2text(keydata2);
@@ -569,11 +580,13 @@ async function testRSA() {
   console.log('test rsa...', str);
 }
 testRSA();
-
+// AES 就比 RSA，从加密性能来说高很多，但是加密解密必须传递密钥，无法实现全程保密
 async function testAES() {
   const aes = new AESGCMCryptoHelper();
-  const key = 'aaaa' || crypto.getRandomValues(new Uint8Array(16)).buffer;
-  const iv = 'bbbb' || crypto.getRandomValues(new Uint8Array(16)).buffer;
+  const key =
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ||
+    crypto.getRandomValues(new Uint8Array(16)).buffer; // 可以用户自定义(AES key data must be 128 or 256 bits---至少32位字符)，可以随机生成
+  const iv = 'bbbb' || crypto.getRandomValues(new Uint8Array(16)).buffer; // // 可以用户自定义，可以随机生成
   await aes.init({ key, iv }); // AES key data must be 128 or 256 bits
   const data = await aes.encrypt('hello world');
   const str = await aes.decrypt(data);
