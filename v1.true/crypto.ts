@@ -1,13 +1,13 @@
 /** crypto 支持的加密/解密算法 */
 enum CRYPTO_ALGORITHM {
   /** RSA-OAEP算法 */
-  RSA = 'RSA-OAEP', // RSA 是非对称密钥加密的算法
+  RSA = "RSA-OAEP", // RSA 是非对称密钥加密的算法
   /** CTR 模式下的 AES 算法*/
-  AES_CTR = 'AES-CTR', // AES 是对称密钥加密的算法，CTR 是一种分组加密的操作模式（mode）
+  AES_CTR = "AES-CTR", // AES 是对称密钥加密的算法，CTR 是一种分组加密的操作模式（mode）
   /** CBC 模式下的 AES 算法*/
-  AES_CBC = 'AES-CBC', // AES 是对称密钥加密的算法，CBC 是一种分组加密的操作模式（mode）
+  AES_CBC = "AES-CBC", // AES 是对称密钥加密的算法，CBC 是一种分组加密的操作模式（mode）
   /** GCM 模式下的 AES 算法*/
-  AES_GCM = 'AES-GCM', // AES 是对称密钥加密的算法，GCM 是一种分组加密的操作模式（mode）
+  AES_GCM = "AES-GCM", // AES 是对称密钥加密的算法，GCM 是一种分组加密的操作模式（mode）
 }
 /** RSA 算法加密解密工具的参数 */
 interface RSA_CRYPTO_OPTIONS {
@@ -46,10 +46,10 @@ enum CRYPTO_TYPE {
 }
 
 enum FORMAT_TYPE {
-  RAW = 'raw', // (public only) , 适用于 AES 算法
-  PKCS8 = 'pkcs8', // (private only) , 私钥 ,PKCS8 标准ASN.1序列化私钥的结构，适用于 RSA 算法
-  SPKI = 'spki', // (public only) , 公钥，使用 spki ，它代表“受管主题”，标准ASN.1序列化公钥的结构, 适用于 RSA 算法
-  JWK = 'jwk', //  (public or private) 适用于 RSA/AES 算法
+  RAW = "raw", // (public only) , 适用于 AES 算法
+  PKCS8 = "pkcs8", // (private only) , 私钥 ,PKCS8 标准ASN.1序列化私钥的结构，适用于 RSA 算法
+  SPKI = "spki", // (public only) , 公钥，使用 spki ，它代表“受管主题”，标准ASN.1序列化公钥的结构, 适用于 RSA 算法
+  JWK = "jwk", //  (public or private) 适用于 RSA/AES 算法
 }
 
 /**
@@ -61,7 +61,7 @@ abstract class CryptoHelper {
   constructor() {
     if (!window.crypto || !window.crypto.subtle) {
       // // 如果是本地测试，只能使用 localhost , 使用 127.0.0.1 或者其他，则 window.crypto.subtle 为 undefined
-      throw new Error('您的浏览器不支持 crypto api，无法为您提供加密处理');
+      throw new Error("您的浏览器不支持 crypto api，无法为您提供加密处理");
     }
     this.tool = window.crypto.subtle;
   }
@@ -103,7 +103,7 @@ abstract class CryptoHelper {
         break;
       }
       default: {
-        console.warn('bufType参数错误，使用默认 uint8');
+        console.warn("bufType参数错误，使用默认 uint8");
         buf = new ArrayBuffer(str.length);
         bufView = new Uint8Array(buf);
         break;
@@ -136,7 +136,7 @@ abstract class CryptoHelper {
         break;
       }
       default: {
-        console.warn('bufType参数错误，使用默认 uint8');
+        console.warn("bufType参数错误，使用默认 uint8");
         arr = new Uint8Array(buffer);
         break;
       }
@@ -179,8 +179,8 @@ class RSACryptoHelper extends CryptoHelper {
       `-----END PUBLIC KEY-----`,
       `\\s`,
     ];
-    const reg = new RegExp(invalidKey.join('|'), 'ig');
-    const resStr = str.replace(reg, '');
+    const reg = new RegExp(invalidKey.join("|"), "ig");
+    const resStr = str.replace(reg, "");
     const binaryStr = atob(resStr); // 将 base-64 编码转化成 str
     const buffer = this.str2buffer(binaryStr, BUFFER_TYPE.UINT8);
     return this.tool.importKey(
@@ -188,10 +188,10 @@ class RSACryptoHelper extends CryptoHelper {
       buffer,
       {
         name: CRYPTO_ALGORITHM.RSA,
-        hash: 'SHA-256',
+        hash: "SHA-256",
       },
       true,
-      ['encrypt'] // 公钥，用于加密
+      ["encrypt"] // 公钥，用于加密
     );
   }
   /**
@@ -206,8 +206,8 @@ class RSACryptoHelper extends CryptoHelper {
       `-----END PRIVATE KEY-----`,
       `\\s`,
     ];
-    const reg = new RegExp(invalidKey.join('|'), 'ig');
-    const regStr = str.replace(reg, '');
+    const reg = new RegExp(invalidKey.join("|"), "ig");
+    const regStr = str.replace(reg, "");
     const binaryStr = atob(regStr); // 将 base-64 编码转化成 str
     const buffer = this.str2buffer(binaryStr, BUFFER_TYPE.UINT8);
     return this.tool.importKey(
@@ -215,10 +215,10 @@ class RSACryptoHelper extends CryptoHelper {
       buffer,
       {
         name: CRYPTO_ALGORITHM.RSA,
-        hash: 'SHA-256',
+        hash: "SHA-256",
       },
       true,
-      ['decrypt'] // 私钥，用于解密
+      ["decrypt"] // 私钥，用于解密
     );
   }
   /**
@@ -230,10 +230,11 @@ class RSACryptoHelper extends CryptoHelper {
       this.publicKey = await this.setPublicKey(ops.public_key);
       this.privateKey = await this.setPrivateKey(ops.private_key);
 
-      console.log('RSACryptoHelper init...完毕!!!');
+      console.log("RSACryptoHelper init...完毕!!!");
       return this;
     } catch (error) {
-      console.error('RSACryptoHelper init...error', error);
+      console.error("RSACryptoHelper init...error", error);
+      throw new Error(`RSACryptoHelper init error! ${error}`);
     }
   }
   /**
@@ -247,7 +248,7 @@ class RSACryptoHelper extends CryptoHelper {
   ): Promise<ArrayBuffer> {
     try {
       if (!this.switchTool) {
-        throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
+        throw new Error("加密工具开关已被关闭，请打开开关后再进行操作");
       }
       const buffer =
         content instanceof ArrayBuffer ? content : this.str2buffer(content);
@@ -274,17 +275,18 @@ class RSACryptoHelper extends CryptoHelper {
                 return buf;
               },
               (err) => {
-                console.error('encrypt error', err);
+                console.error("encrypt error", err);
                 throw err;
               }
             )
         );
-        const bufferArr = await Promise.all(tasks);
-        cb && cb(true); // args 可以自定义，比如 buf , 比如 end / len
-        return concatArrayBuffer(bufferArr);
       }
+      const bufferArr = await Promise.all(tasks);
+      cb && cb(true); // args 可以自定义，比如 buf , 比如 end / len
+      return concatArrayBuffer(bufferArr);
     } catch (error) {
-      console.error('encrypt error', error);
+      console.error("encrypt error", error);
+      throw error;
     }
   }
 
@@ -299,7 +301,7 @@ class RSACryptoHelper extends CryptoHelper {
   ): Promise<string> {
     try {
       if (!this.switchTool) {
-        throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
+        throw new Error("加密工具开关已被关闭，请打开开关后再进行操作");
       }
 
       const buf =
@@ -315,7 +317,9 @@ class RSACryptoHelper extends CryptoHelper {
         buffers.push(buf.slice(start, end));
       }
 
-      const tasks = [];
+      const tasks = [] as Array<
+        Promise<ArrayBuffer> | PromiseLike<ArrayBuffer>
+      >;
       for (const buffer of buffers) {
         tasks.push(
           this.tool.decrypt(
@@ -329,7 +333,8 @@ class RSACryptoHelper extends CryptoHelper {
       const bufferArr = await Promise.all(tasks);
       return this.buffer2str(concatArrayBuffer(bufferArr));
     } catch (error) {
-      console.error('decrypt error', error);
+      console.error("decrypt error", error);
+      throw error;
     }
   }
 }
@@ -347,7 +352,7 @@ class AESGCMCryptoHelper extends CryptoHelper {
    * @returns
    */
   private setKeyBuffer(key: string | ArrayBuffer) {
-    return typeof key === 'string'
+    return typeof key === "string"
       ? this.str2buffer(key, BUFFER_TYPE.UINT8)
       : key;
   }
@@ -359,13 +364,13 @@ class AESGCMCryptoHelper extends CryptoHelper {
     key: string | ArrayBuffer
   ): Promise<CryptoKey> | PromiseLike<CryptoKey> {
     const buffer =
-      typeof key === 'string' ? this.str2buffer(key, BUFFER_TYPE.UINT8) : key;
+      typeof key === "string" ? this.str2buffer(key, BUFFER_TYPE.UINT8) : key;
     return this.tool.importKey(
       FORMAT_TYPE.RAW,
       buffer,
       CRYPTO_ALGORITHM.AES_GCM,
       true,
-      ['encrypt', 'decrypt']
+      ["encrypt", "decrypt"]
     ); // 使用 AES 算法时导入密钥使用 'raw' 数据格式
   }
   /**
@@ -373,7 +378,7 @@ class AESGCMCryptoHelper extends CryptoHelper {
    * @param iv 作为向量的数据
    */
   private setIv(iv: string | ArrayBuffer): ArrayBuffer {
-    return typeof iv === 'string' ? this.str2buffer(iv, BUFFER_TYPE.UINT8) : iv;
+    return typeof iv === "string" ? this.str2buffer(iv, BUFFER_TYPE.UINT8) : iv;
   }
   /**
    * 初始化函数，生成密钥和向量
@@ -384,10 +389,11 @@ class AESGCMCryptoHelper extends CryptoHelper {
       this._keyBuffer = this.setKeyBuffer(ops.key);
       this._key = await this.setKey(this._keyBuffer);
       this._iv = this.setIv(ops.iv);
-      console.log('AESGCMCryptoHelper init...完毕!!!');
+      console.log("AESGCMCryptoHelper init...完毕!!!");
       return this;
     } catch (error) {
-      console.error('AESGCMCryptoHelper init...error', error);
+      console.error("AESGCMCryptoHelper init...error", error);
+      throw new Error(`AESGCMCryptoHelper init error! ${error}`);
     }
   }
   /**
@@ -401,7 +407,7 @@ class AESGCMCryptoHelper extends CryptoHelper {
   ): Promise<ArrayBuffer> {
     try {
       if (!this.switchTool) {
-        throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
+        throw new Error("加密工具开关已被关闭，请打开开关后再进行操作");
       }
 
       const buffer =
@@ -413,7 +419,8 @@ class AESGCMCryptoHelper extends CryptoHelper {
         buffer
       );
     } catch (error) {
-      console.error('encrypt error', error);
+      console.error("encrypt error", error);
+      throw new Error(`encrypt error! ${error}`);
     }
   }
   /**
@@ -427,7 +434,7 @@ class AESGCMCryptoHelper extends CryptoHelper {
   ): Promise<string> {
     try {
       if (!this.switchTool) {
-        throw new Error('加密工具开关已被关闭，请打开开关后再进行操作');
+        throw new Error("加密工具开关已被关闭，请打开开关后再进行操作");
       }
       const buffer =
         content instanceof ArrayBuffer ? content : this.str2buffer(content);
@@ -439,7 +446,8 @@ class AESGCMCryptoHelper extends CryptoHelper {
       );
       return this.buffer2str(decrypted);
     } catch (error) {
-      console.error('decrypt error', error);
+      console.error("decrypt error", error);
+      throw new Error(`decrypt error! ${error}`);
     }
   }
 
@@ -477,10 +485,10 @@ function getRsaKeys(): Promise<any> {
           name: CRYPTO_ALGORITHM.RSA,
           modulusLength: 1024, //can be 1024, 2048, or 4096
           publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-          hash: { name: 'SHA-256' }, //can be "SHA-1", "SHA-256", "SHA-384", or "SHA-512"
+          hash: { name: "SHA-256" }, //can be "SHA-1", "SHA-256", "SHA-384", or "SHA-512"
         },
         true, //whether the key is extractable (i.e. can be used in exportKey)
-        ['encrypt', 'decrypt'] //must be ["encrypt", "decrypt"] or ["wrapKey", "unwrapKey"]
+        ["encrypt", "decrypt"] //must be ["encrypt", "decrypt"] or ["wrapKey", "unwrapKey"]
       )
       .then(function (key) {
         window.crypto.subtle
@@ -507,18 +515,18 @@ function getRsaKeys(): Promise<any> {
   });
 }
 function RSA2text(buffer, isPrivate = 0) {
-  var binary = '';
+  var binary = "";
   var bytes = new Uint8Array(buffer);
   var len = bytes.byteLength;
   for (var i = 0; i < len; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
   var base64 = window.btoa(binary);
-  var text = '-----BEGIN ' + (isPrivate ? 'PRIVATE' : 'PUBLIC') + ' KEY-----\n';
+  var text = "-----BEGIN " + (isPrivate ? "PRIVATE" : "PUBLIC") + " KEY-----\n";
   text += base64
-    .replace(/[^\x00-\xff]/g, '$&\x01')
-    .replace(/.{64}\x01?/g, '$&\n');
-  text += '\n-----END ' + (isPrivate ? 'PRIVATE' : 'PUBLIC') + ' KEY-----';
+    .replace(/[^\x00-\xff]/g, "$&\x01")
+    .replace(/.{64}\x01?/g, "$&\n");
+  text += "\n-----END " + (isPrivate ? "PRIVATE" : "PUBLIC") + " KEY-----";
   return text;
 }
 
@@ -575,21 +583,21 @@ async function testRSA() {
     public_key: publicKey || KEY.PUBLIC,
     private_key: privateKey || KEY.PRIVATE,
   });
-  const data = await rsa.encrypt('hello world');
+  const data = await rsa.encrypt("hello world");
   const str = await rsa.decrypt(data);
-  console.log('test rsa...', str);
+  console.log("test rsa...", str);
 }
 testRSA();
 // AES 就比 RSA，从加密性能来说高很多，但是加密解密必须传递密钥，无法实现全程保密
 async function testAES() {
   const aes = new AESGCMCryptoHelper();
   const key =
-    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ||
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ||
     crypto.getRandomValues(new Uint8Array(16)).buffer; // 可以用户自定义(AES key data must be 128 or 256 bits---至少32位字符)，可以随机生成
-  const iv = 'bbbb' || crypto.getRandomValues(new Uint8Array(16)).buffer; // // 可以用户自定义，可以随机生成
+  const iv = "bbbb" || crypto.getRandomValues(new Uint8Array(16)).buffer; // // 可以用户自定义，可以随机生成
   await aes.init({ key, iv }); // AES key data must be 128 or 256 bits
-  const data = await aes.encrypt('hello world');
+  const data = await aes.encrypt("hello world");
   const str = await aes.decrypt(data);
-  console.log('test aes...', str);
+  console.log("test aes...", str);
 }
 testAES();
